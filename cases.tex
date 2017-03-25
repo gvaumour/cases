@@ -89,38 +89,34 @@ ACM SIG Proceedings.\footnote{This is an abstract footnote}
 
 Caches are widely used in modern processors to effectively hide the data access latency since memory reference patterns in most applications have good spatial and temporal locality. But with the number of cores increasing, adopting hardware-controlled caches increases the energy consumption for two reasons. The automatic data management in caches is costly and the coherence protocols do not scale very well with the number of cores. As reported in the literature, the cache hierarchy consumes between 25\% and 50\% of the energy of the chip~\cite{Segars:2001} on current systems. With the growing focus on energy efficiency, it is important to find ways to reduce energy without sacrificing performance
 
-
+Instead fo growing cache sizes, heterogeneous management
 We can found two main motivations for heterogeneous management that lead to different classifications inside the memory system.
 
-First, a group of solutions tries to classify data based on their locality property. Different types of data between instruction, head data, stack data, and global data have different locality properties and cache uses and specific cache structure can be build for each type. This type of solution has been studied with success since the early days of cache memories. In the 60s, Harvard architectures separate the L1-level cache into instruction cache and data cache. In 90s, Gonzalez and al.\cite{Gonzalez:1995} proposed to go further in this direction with a data cache organization that separate data with high temporal locality (temporal cache) from data with spatial locality (spatial cache). The \textit{Region-based caching} introduced by Lee and al\cite{Lee:2000} decomposes the data cache into even more specialized structures, one structure for each kind of data: global data, stack data and heap data. These propositions has been improved since their first proposition but it illustrates the idea that such hardware-based solutions open up degrees of freedom for cache design and cache optimization. They bring important energy consumption reduction if the separation of data results in two sub-groups of data with very different cache uses. The difficulty of such organization is to be able at hardware level, to determine the type of accessed data and drive the request to the relevant sub-memory.
+First, a group of solutions tries to classify data based on their locality properties. Different types of data between instruction, head data, stack data, and global data have different locality properties and cache uses so that specific cache structure can be build for each type. This type of solution has been studied with success since the early days of cache memories. In the 60s, Harvard architectures separate the L1-level cache into instruction cache and data cache. In 90s, Gonzalez and al.\cite{Gonzalez:1995} proposed to go further in this direction with a data cache organization that separate data with high temporal locality (temporal cache) from data with spatial locality (spatial cache). The \textit{Region-based caching} introduced by Lee and al\cite{Lee:2000} decomposes the data cache into even more specialized structures, one structure for each kind of data: global data, stack data and heap data. These propositions has been improved since their first proposition but it illustrates the idea that such hardware-based solutions open up degrees of freedom for cache design and cache optimization. They bring important dynamic energy consumption reduction if the separation of data results in two sub-groups of data with very different cache uses. The difficulty of such organization is to be able at hardware level, to perform the data classification and drive the request to the relevant sub-memory. 
 
-A second group of solutions optimizes coherence protocols by classifying data between Shared and Private, and Read-Write and Read-Only. Indeed, some analysis shows that the amount of data that required to be watched by costly coherence protocol is actually   
-The goal is to isolate a specific property of the data in order to improved 
+Second, classification of data into private and shared has proven to be a catalyst for techniques to reduce coherence cost, since private data can be taken out of coherence and resources can be concentrated on providing coherence for shared data. This type of techniques can be further enhanced by classification of read-only and read-write data. This is based on the observation that few data actually requires coherence, only 18\% of the pages are in Shared Read-Write state on PARSEC on average\cite{Cuesta:2013}. It allows to simplify coherence in multicore architectures by reducing its associated costs (area, energy, performance) and therefore increasing scalability. 
+The difficulty 
 
-We propose in this paper 
+We propose in this paper an approach in the middle of these two groups of solutions with the specific management of read-only data. In this paper, read-only is seen as a dynamic property over time, so the data status can change during execution. Although the coherence benefit of a specific read-only data management is obvious, the locality difference has been illustrated in a previous study~\cite{vaumourin:2014} performed on a standard set of applications for embedded systems. It reveals an important difference of behavior between read-only data and read-write data in terms of locality and cache use, especially for image processing applications due to their implementation as a pipeline of tasks. In this case, there is a strong interest at separating read-only data accesses because they create pollution the main memory stream.
 
-In both group of solutions, 
+Data classification can be done 
+Prior works performs works mostly at OS-level or at hardware-level by building predictors. 
 
-Understanding 
+Static analysis or profiling      
+For data classification, most solutions rely on hardware predictors. 
 
-In industrial work, the Kepler architecture~\cite{NVIDIA:2007} for NVIDIA GPUs offers a read-only cache as an improvement of the previous texture cache. Using this cache can remove loads and reduce the size of the shared L1 working set. It can be use automatically by the compiler or explicitly by the user. We study in this paper the pertinence of such idea for cpu-based architectures.
 
-A previous study~\cite{vaumourin:2014} performed on a standard set of applications for embedded systems reveals an important difference of behavior between read-only data and read-write data in terms of reuse and memory access distribution, especially for image processing applications. The study show that the difference of behavior between read-only and read-write data is important enough to consider specific management of these data. It improves the locality and cache use on both sub-set of data. Specific management for a particular kind of data opens degrees of freedom for cache designs which have an important impact on energy consumption. Moreover, specific optimization for such datapath can also be explored. The contributions of the paper are the following: an illustration of the difference of behavior between read-only and read-write data, the description of a data classification methodology at compile time, an empirical architectural exploration for the specific management of the read-only data into a generic memory system. The experimental evaluation shows that the final solution with specific read-only data management can decrease the energy consumption of the memory system by 20.6\% on average without performance penalty on a set of multithreaded image processing benchmarks. The data classification at compile-time performs a detection rate of 89,3\% in average compared to an offline analysis. The organization of this paper is the following: Section II justifies the specific behavior of read-only data in terms of data locality. Section III details the compile-time data classification. Section IV highlights our architecture exploration methodology and the evaluation methodology. Section VI describes the experiments results. Section VII study a specific optimization for the read-only datapath. Finally, Section VIII provides our conclusions.
+%In industrial work, the Kepler architecture~\cite{NVIDIA:2007} for NVIDIA GPUs offers a read-only cache as an improvement of the previous texture cache. Using this cache can remove loads and reduce the size of the shared L1 working set. It can be use automatically by the compiler or explicitly by the user. We study in this paper the pertinence of such idea for cpu-based architectures.
+
+The contributions of the paper are the following: an illustration of the difference of behavior between read-only and read-write data, the description of a data classification methodology at compile time, an empirical architectural exploration for the specific management of the read-only data into a generic memory system. 
+The experimental evaluation shows that the final solution with specific read-only data management can decrease the energy consumption of the memory system by 20.6\% on average without performance penalty on a set of multithreaded image processing benchmarks. The data classification at compile-time performs a detection rate of 89,3\% in average compared to an offline analysis. The organization of this paper is the following: Section II justifies the specific behavior of read-only data in terms of data locality. Section III details the compile-time data classification. Section IV highlights our architecture exploration methodology and the evaluation methodology. Section VI describes the experiments results. Section VII study a specific optimization for the read-only datapath. Finally, Section VIII provides our conclusions.
 
 
 \section{Read-only Data Characterization}
 
 As mentioned before, the specific management in the memory system for a particular kind of data has been successfully studied in the past. These solutions creates two sub-groups of data with very different needs and use of cache memory. This difference is often intuitive like the difference of behavior in the memory between data and instructions. For read-only data, this difference needs to be illustrated first by a detailed study before considering specific management.  
 
-We define read-only data as data used in a read mode either for the
-whole application execution (input data) or for a more limited scope
-such as a function, a kernel or a loop. In this case, read-write data
-can switch into read-only mode for some scope and then switch back to
-read-write mode. Our analysis is mostly focused on image processing
-applications, since these applications are often implemented as
-a pipeline of tasks where the output (written) data of a task
-corresponds to the input (read) data of the next one. Such computations
-manipulate large regions that are in a read mode on a long scope.
+We define read-only data as data used in a read mode either for the whole application execution (input data) or for a more limited scope such as a function, a kernel or a loop. In this case, read-write data can switch into read-only mode for some scope and then switch back to read-write mode. Our analysis is mostly focused on image processing applications, since these applications are often implemented as a pipeline of tasks where the output (written) data of a task corresponds to the input (read) data of the next one. Such computations manipulate large regions that are in a read mode on a long scope.
 
 We study the separation of the memory stream with a data locality metric: the reuse distance~\cite{Coffman:1973}. This metric is defined as the number of different accesses between two accesses to the same address and depends only on the cache block size (fixed to 64B). A two-step analysis is followed: First, a memory trace is extracted from an instrumented execution of the analyzed application. Then, the read-only data and read-only periods are detected through an analysis of the memory trace. This offline analysis explores the trace in a 2D space (time and address) to detect rectangular areas solely composed of read accesses. Such analysis is manually tuned to detect read areas in an adequate grain in order to avoid capturing every read access as a small read-only area. The main memory trace is then split in read-only and in read-write traces. The average reuse distance is computed on all traces: The original trace and the 2 sub-traces. The results, shown in Figure \ref{stackdistance}, are normalized to the average reuse distance of the full trace.
 
@@ -162,9 +158,11 @@ In the literature, examples\cite{Cuesta:2013}\cite{Pugsley:2010} of read-only da
 
 The goal of dataflow analysis performed by the compilers is to retrieve information about the handled data to perform some optimizations.
 
-For scalar analysis, definition-use chains (DU chains) link the definition (write operation) to all corresponding uses (read operation), they are standard data structures constructed by the compiler.
-This information can be directly reused for the detection of read-only periods of scalar variables. For pointers, arrays and structures, we developed an extension of the alias analysis as an intra-procedural pass that focuses on nested computational loops. The algorithm is the following. For each loop, the pass iterates over the loop body, and maintains two lists of memory references, a read-only and a read-write list. These lists are then built for each loop nest. The results of alias analysis help us correlates the memory reference to memory regions. In order to consider a memory region as read-only, all references that points to the region must come from the read-only list. The status of memory regions can then be deduced for each loop nest and this property can vary between loop nests. The analysis uses a conservative approach in order to ensure that every reference captured is read-only. For example, if there are conditional branches in loops, the memory region needs to be read-only in all the paths in order to be considered read-only. Also, as the abstraction we use for memory regions is an interval, entire intervals are considered to be either read-only or read/write. 
+For pointers, arrays and structures, we developed an extension of the alias analysis as an intra-procedural pass that focuses on nested computational loops. The algorithm is the following. For each loop, the pass iterates over the loop body, and maintains two lists of memory references, a read-only and a read-write list. These lists are then built for each loop nest. The results of alias analysis help us correlates the memory reference to memory regions. In order to consider a memory region as read-only, all references that points to the region must come from the read-only list. The status of memory regions can then be deduced for each loop nest and this property can vary between loop nests. The analysis uses a conservative approach in order to ensure that every reference captured is read-only. For example, if there are conditional branches in loops, the memory region needs to be read-only in all the paths in order to be considered read-only. It works the same in the loop nest is composed with several internal loops. Also, as the abstraction we use for memory regions is an interval, entire intervals are considered to be either read-only or read/write. 
 
+So our analysis is built on top on the pointer aliasing analysis and shares the same limitation. Possible aliasing between two pointers with a different status causes a region to be conservatily considered read-write whenever the base addresses cannot proven to be disjoint. In particular, this is the case when pointers originate in parameter values instead of global or stack-allocated memory. This situation rises because production compilers like GCC tends to implement pointer aliasing analysis at function-scope in order to keep a low complexity. But in our set of applications, all the pointers are used in a different function from where they are allocated. So, we speculatively assume non-aliasing for function parameters which is true in practise for our set of applications.
+
+%Also, as we saw, some code optimization performed by the compiler can modify drastically the read-only detection so optimally, our pass would be placed at the very end of the compiler workflow. In practise however, we place our pass at the end of the list of loop analysis which is 
 
 
 \begin{figure}
@@ -174,30 +172,15 @@ This information can be directly reused for the detection of read-only periods o
     \label{comparAcces}
 \end{figure}
 
-This algorithm has been implemented as a GIMPLE pass in GCC 4.9. To determine the quality of this static analysis, the results are compared to the exhaustive offline analysis presented Section II. Results in Figure ~\ref{comparAcces} show the static analysis we propose is able to capture most of the read-only memory accessed compared to the offline analysis. The detection rate is 89.7\% in average for the considered applications compared to the offline analysis, which is suitable to consider architectural specific management. 
+This algorithm has been implemented as a GIMPLE pass in GCC 4.9. To determine the quality of this static analysis, the results are compared to the offline analysis presented Section II. Results in Figure ~\ref{comparAcces} show the static analysis we propose is able to capture most of the read-only memory accessed compared to the offline analysis. The detection rate is 89.7\% in average for the considered applications compared to the offline analysis, which is suitable to consider architectural specific management. 
 
-The static analysis developed is fairly simple compared to existing dataflow analysis present in compiler but it highlights the fact that read-only information is quite simple to extract from a compiler. Therefore, compile-time read-only data detection is pertinent and can be part of a co-designed architecture that proposes specific management for read-only data. The detection rate suits our requirements for the analyzed applications and in case of more complex applications, more complex analysis can be used such as inter-procedural dataflow analysis to study accessed memory regions. 
-
-\subsection{Considerations}
-Position de la passe dans le flow d'execution 
-
+The static analysis developed is fairly simple compared to existing dataflow analysis present in compiler but it highlights the fact that read-only information is quite simple to extract at compiler level and therefore is relevant as part of a co-design architecture that proposes specific management for read-only data. The detection rate suits our requirements for the analyzed applications and in case of more complex applications, more complex analysis can be used such as inter-procedural dataflow analysis to study accessed memory regions. 
 
 \subsection{Compiler-Hardware Interface}
 
-The solution assumes that each processor knows the datapath to use
-when accessing a given cache block. We propose to add this information
-directly into memory request, this technique is known as a cache
-collaborative technique or cache hints. Existing architectures already use these kinds
-of extra bits in the instruction, such as the prefetch and evict-next
-instruction in the Alpha 21264 	
-We believe that, in most architectures, the increasing speed gap between memory and
-processor will justify the inclusion of additional bits in the
-instruction code to facilitate the reduction of this gap.
+The solution assumes that each processor knows the datapath to use when accessing a given cache block. We propose to add this information directly into memory request, this technique is known as a cache collaborative technique or cache hints. Existing architectures already use these kinds of extra bits in the instruction, such as the prefetch and evict-next instruction in the Alpha 21264 We believe that, in most architectures, the increasing speed gap between memory and processor will justify the inclusion of additional bits in the instruction code to facilitate the reduction of this gap.
 
-The benefits are twofold: It allows to work on block granularity
-classification that is proven to be important for the detection rate
-and it allows to transfer semantic information dependent on the code and
-independent on the execution context.
+The benefits of such interface are twofold: It allows to work on block granularity classification that is proven to be important for the detection rate and it allows to transfer semantic information dependent on the code and independent on the execution context. The information is always accurate and 
 
 \section{Architecture exploration}
 
@@ -346,27 +329,6 @@ All benchmarks are presented in Table~\ref{benchs}. They come from in-house set 
 \end{tabular}
 \end{table*}
 
- 
-%\begin{figure}
-%    \centering
-%    \includegraphics[width=12cm]{consoResults.png}
-%    \caption{Normalized energy consumption variation of the architectural propositions}
-%    \label{consResults}
-%\end{figure}
-%
-%\begin{figure}
-%    \centering
-%    \includegraphics[width=12cm]{perfsResults.png}
-%    \caption{Normalized AMAT variation of the architectural propositions}
-%    \label{perfsResults}
-%\end{figure}
-
-%\begin{figure}
-%    \centering
-%    \includegraphics[width=12cm]{missResults.png}
-%    \caption{Normalized miss variation at L1-level for scenario A and B }
-%    \label{missResults}
-%\end{figure}
 \begin{figure*}
     \centering
     \includegraphics[width=15cm]{./images/results.png}
