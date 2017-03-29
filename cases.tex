@@ -20,11 +20,11 @@
 % ISBN
 \acmISBN{123-4567-24-567/08/06}
 
-%Conference
-\acmConference[CASES 2017]{International Conference on Compilers, Architecture,
-and Synthesis for Embedded Systems}{October 2017}{Seoul, South Korea} 
-\acmYear{2017}
-\copyrightyear{2017}
+%%Conference
+%\acmConference[CASES 2017]{International Conference on Compilers, Architecture,
+%and Synthesis for Embedded Systems}{October 2017}{Seoul, South Korea} 
+%\acmYear{2017}
+%\copyrightyear{2017}
 
 \begin{document}
 \title{Read Only Data Specific Management for an Energy Efficient Memory System}
@@ -35,14 +35,15 @@ and Synthesis for Embedded Systems}{October 2017}{Seoul, South Korea}
   \texttt{acmart.pdf} document}
 
 
-\author{Gregory Vaumourin}
+\author{Gregory Vaumourin, Alexandre Guerre, Thomas Dombek}
 \affiliation{
   \institution{CEA LIST}
   \city{Gif sur Yvette} 
   \state{France} 
   \postcode{F-91191}
 }
-\email{gregory.vaumourin@gmail.com}
+\email{{firstname}.{lastname}@cea.fr}
+
 
 \author{Denis Barthou}
 \affiliation{%
@@ -56,9 +57,8 @@ and Synthesis for Embedded Systems}{October 2017}{Seoul, South Korea}
 
 
 \begin{abstract}
-This paper provides a sample of a \LaTeX\ document which conforms,
-somewhat loosely, to the formatting guidelines for
-ACM SIG Proceedings.\footnote{This is an abstract footnote}
+Traditional existing cache-based memory hierarchies, especially in the context of embedded systems, present many challenges in power consumption and scalability. The L1 level memory is usually divided between instructions and data, notably because of their difference of data locality and cache use. Based on a previous study\cite{vaumourin:2014}, we propose to go further in this direction by taking advantage of the difference of behavior that is observed between read-only data and read-write data in image processing applications. The memory stream separation increases the overall data locality of the working set and improve cache efficiency. This improvement is then converted into energy consumption reduction through more aggressive cache designs. Several architectural propositions are discussed in order to create a dedicated data path for read-only data. Read-only data detection is proposed at compile stage in order to detect the read-only data at cache block granularity. This classification presents an detection rate of 89.3\% in average when compared to a perfect offline analysis. Evaluated with Gem5 and McPat in a multicore environment with a set of multithreaded image processing benchmarks, the new memory organization with a shared read-only cache at L1-level shows an average of 20.6\% of energy savings without any performance degradation. 
+
 \end{abstract}
 
 %
@@ -111,10 +111,29 @@ For data classification, most solutions rely on hardware predictors.
 The contributions of the paper are the following: an illustration of the difference of behavior between read-only and read-write data, the description of a data classification methodology at compile time, an empirical architectural exploration for the specific management of the read-only data into a generic memory system. 
 The experimental evaluation shows that the final solution with specific read-only data management can decrease the energy consumption of the memory system by 20.6\% on average without performance penalty on a set of multithreaded image processing benchmarks. The data classification at compile-time performs a detection rate of 89,3\% in average compared to an offline analysis. The organization of this paper is the following: Section II justifies the specific behavior of read-only data in terms of data locality. Section III details the compile-time data classification. Section IV highlights our architecture exploration methodology and the evaluation methodology. Section VI describes the experiments results. Section VII study a specific optimization for the read-only datapath. Finally, Section VIII provides our conclusions.
 
+\section{Related Works}
+
+As mentioned before, the specific management in the memory system based on based on data classification has been successfully studied in the past. These solutions creates two (or more) sub-groups of data with different properties that can be exploit separately. The problems encoutered with such solutions are the efficiency of the classification and the appropriate level  We focus on solutions that optimize for locality and coherence. 
+
+\textbf{Locality Optimization :} 
+
+Apart from the locality principle, the locality properties are far from being uniform accros the working set and differences can be exploited. This difference is often intuitive like the difference between data and instructions. Instructions represent a very small part working set while being accessed much more often than regular data, which is one of the argument of a separation at the first level between instruction and data cache. Going further in this direction, Gonzales et al.\cite{Gonzalez:1995} first proposed a L1 data cache with separate sub-structures one for data with high temporal locality (temporal cache) and one for high spatial locality data (spatial cache) that has been improved by Adamo et al.\cite{Adamo:2009}. In this case, the classification focuses on detecting wheter the accessed data is part of an array to place them in the spatial cache. The solution includes a history table that detects strided accesses. Having separated structures allows to optimize further the cache design and in this case, the temporal and spatial sub-caches have different blocksizes and replacement policies. Lee et al.\cite{Lee:2000} propose keeping separate structures for stack, heap, and global data. Geiger goes further by splitting the heap cache into several sub-parts~\cite{Geiger:2005}. They rely on being able to distinguish these based solely on virtual address, possibly with some system support. Without operating system and hardware support, these approaches will not work when Address Space Layout Randomization (ASLR) is used for security, because these techniques involve randomly relocating the program’s stack, heap, and shared libraries at runtime. A more recent solution, proposed by Kang et al.\cite{Kang:2011}, detects stack data by determining whether the address is an offset from the stack pointer register.
+Those solutions are often more effective at reducing the miss rate compared to a naive cache size augmentation while being more energy efficient. The main drawbacks of such technique are the classification mechanism that stays quite simple and at hardware-level. Also, none of those solutions makes distinctions based on the read and write pattern of data. The locality difference between RW and RO data has been illustrated in a previous study \cite{vaumourin:2014} so we study in this paper the problem of read-only data management with a light-weight classification at compile-level. Moreover, it allows also coherence optimization of the system.
+
+\textbf{Coherence Optimization :}
+
+A common useful tool employed by such approaches is the classification of data into private and shared\cite{Ros:2012}\cite{Cuesta:2013} resulting in directory size reduction, or optimizing the coherence protocol itself by replacing explicit coherence invalidations with silent self-invalidation of shared data upon synchronization~\cite{Ros:2012}. The OS approach is the most common for such optimization because it does not impose extra requirements for dedicated hardware, since data classification at page granularity is stored along with the page table entries (PTEs)~\cite{Hardavellas:2009}. This makes it a good choice for complexity-effective optimizations.These solutions mostly detect read-only data at page granularity in a reactive fashion. A page is first considered read-only and a single write on the page switches the status of the page into read-write mode. Compared to a block granularity detection, Page granularity can produce poor detection rates and leads to under-optimal solutions. On the evaluated applications in \cite{Cuesta:2013}, the detection rate of read-only data goes from under 40\% to more than 60\% when switching from page to block granularity. Moreover, hardware-based proposition are area-constrained and limited to simple detection methods such as saturation counters. 
+
+Although incurring minimum hardware cost, compiler-driven classification is not transparent to software. It is well suited for hardware/software co-design, but requires significant effort to determine at compile time if a variable is going to be shared or not. The only work in that direction is from Kim et al.\cite{Kim:2010}. Proving that the sharing state of a data is hard at compile level, the analysis is not strict and can detect probably private data and relies on hardware mechanisms to recover from a classification error. Also, the classification is static so variable do not change states during execution. 
+The read-only classification in such optimizations is seen as an extension on top of the private-shared classication. They do not propose specific strutures to store the shared data with the notable exception of Cebrian et al.\cite{cebrian:2017} that proposes a dedicated shared L1 cache that is logically shared but physically distributed accross all cores. This solution does not scale very well as remotely accessing a cache line in the shared cache can be as painfull as a miss in the L2 cache. 
+
+We propose in this papier a dynamic classification scheme at compile-level of the read-only data as it is easier to 
+
+%\textbf{NVM Technologies}
+The next section performs 
 
 \section{Read-only Data Characterization}
 
-As mentioned before, the specific management in the memory system for a particular kind of data has been successfully studied in the past. These solutions creates two sub-groups of data with very different needs and use of cache memory. This difference is often intuitive like the difference of behavior in the memory between data and instructions. For read-only data, this difference needs to be illustrated first by a detailed study before considering specific management.  
 
 We define read-only data as data used in a read mode either for the whole application execution (input data) or for a more limited scope such as a function, a kernel or a loop. In this case, read-write data can switch into read-only mode for some scope and then switch back to read-write mode. Our analysis is mostly focused on image processing applications, since these applications are often implemented as a pipeline of tasks where the output (written) data of a task corresponds to the input (read) data of the next one. Such computations manipulate large regions that are in a read mode on a long scope.
 
@@ -138,10 +157,7 @@ On all the evaluated benchmarks, two important observations can be made: the ave
     \label{blocking}
 \end{figure}
 
-Read-only data detection and reuse distances depend heavily on parameters such as the degree of locality optimization applied to source code or input data sizes. As an example of locality optimization, the tiling is studied on the \textit{matrix\_multiply} benchmark. Figure \ref{matmul} shows 2D and 3D tiling transformation applied to \textit{mat\_mult} and different tile shapes are evaluated. The tile shape with the best result in terms of average reuse distance of the full trace is kept for the results of Figure \ref{blocking}. In this case, tiles parameters are K=8,J=32 for 2D tiling, and K=8,J=16,I=1 for 3D tiling. It shows that even though the average reuse distance varies with the applied transformation, the average reuse distance between the sub-memory streams remains at the same level. This locality difference comes from the algorithm structure. The read-only matrix accessed in column-order, produces long reuse distances compared to the other, tiling can reduce this distance but will always be larger than the output matrix that reuses its data between each iteration of the innner loop.  The conclusion drawn from the simple version of \textit{matrix\_multiply} stays valid with tiling transformation. However, some locality transformations such as loop fusion can create pathological cases for read-only data detection. For example, if a memory region is read in one loop body (creating a read-only period) and written in the other, merging the 2 loops would cancel the read-only period resulting in no detected read-only data. 
-
-In another direction, the influence on the results of the input data sizes has been studied. Since our methodology uses memory traces, there are technical limitations to the amount of access. The working set size that we study stays at best one order of magnitude under classic working set size used in embedded system. However, several measure points have been taken with different input data size and the tendency of the results suggest that increasing the working set sizes increases the difference of the reuse distance illustrated Figure \ref{stackdistance}, reinforcing our conclusions. The illustrated difference of data locality between read-only and read-write data, motivates the idea of a specific management. The next section studies a data classification mechanism at compile-time in order to place the read-only data in the right data path. 
-
+\subsection{Sensitivity to code transformation}
 \begin{figure}
     \centering
     \includegraphics[width=9cm]{./images/matmul.png}
@@ -150,9 +166,31 @@ In another direction, the influence on the results of the input data sizes has b
 \end{figure}
 
 
+Read-only data detection and reuse distances depend heavily on parameters such as the degree of locality optimization applied to source code or input data sizes. As an example of locality optimization, the tiling is studied on the \textit{matrix\_multiply} benchmark. Figure \ref{matmul} shows 2D and 3D tiling transformation applied to \textit{mat\_mult} and different tile shapes are evaluated. The tile shape with the best result in terms of average reuse distance of the full trace is kept for the results of Figure \ref{blocking}. In this case, tiles parameters are K=8,J=32 for 2D tiling, and K=8,J=16,I=1 for 3D tiling. It shows that even though the average reuse distance varies with the applied transformation, the average reuse distance between the sub-memory streams remains at the same level. This locality difference comes from the algorithm structure. The read-only matrix accessed in column-order, produces long reuse distances compared to the other, tiling can reduce this distance but will always be larger than the output matrix that reuses its data between each iteration of the innner loop.  The conclusion drawn from the simple version of \textit{matrix\_multiply} stays valid with tiling transformation. However, some locality transformations such as loop fusion can create pathological cases for read-only data detection. For example, if a memory region is read in one loop body (creating a read-only period) and written in the other, merging the 2 loops would cancel the read-only period resulting in no detected read-only data. 
+
+\subsection{Sensitivity to input data size}
+
+In another direction, the influence on the results of the input data sizes has been studied. The working set size that we study stays at best one order of magnitude under classic working set size used in embedded system. However, several measure points have been taken with different input data size and the tendency of the results suggest that increasing the working set sizes increases the difference of the reuse distance illustrated Figure \ref{stackdistance}, reinforcing our conclusions. The illustrated difference of data locality between read-only and read-write data, motivates the idea of a specific management. The next section studies a data classification mechanism at compile-time in order to place the read-only data in the right data path. 
+
+\begin{table}
+\caption{Variation of the Reuse distances relatively to input size averaged from all applications}
+\label{inputdata}
+\begin{tabular}{ |c|c|c|c| }
+\hline
+ & Avg Rd& Avg Rd & Avg Rd \\
+ & Full Trace& RW Trace & RO Trace\\
+\hline
+Small Dataset & 100\% & 60\% & 91\%\\
+\hline
+Large Dataset&  100\% & 75\%& 291\%\\
+\hline
+\end{tabular}
+\end{table}
+
+
 \section{Read-only data Detection}
 
-In the literature, examples\cite{Cuesta:2013}\cite{Pugsley:2010} of read-only data classification can be found at hardware-level for coherence optimization purpose. These solutions mostly detect read-only data at page granularity in a reactive fashion. A page is first considered read-only and a single write on the page switches the status of the page into read-write mode. Compared to a block granularity detection, Page granularity can produce poor detection rates and leads to under-optimal solutions. On the evaluated applications in \cite{Cuesta:2013}, the detection rate of read-only data goes from under 40\% to more than 60\% when switching from page to block granularity. Moreover, hardware-based proposition are area-constrained and limited to simple detection methods such as saturation counters. We propose here a mechanism for read-only data classification at compilation stage. Our solution relies on existing dataflow techniques to reach high detection rates and allow data classification at cache block granularity. 
+ Our solution relies on existing dataflow techniques to reach high detection rates and allow data classification at cache block granularity. 
 
 \subsection{Static Analysis}
 
@@ -180,7 +218,7 @@ The static analysis developed is fairly simple compared to existing dataflow ana
 
 The solution assumes that each processor knows the datapath to use when accessing a given cache block. We propose to add this information directly into memory request, this technique is known as a cache collaborative technique or cache hints. Existing architectures already use these kinds of extra bits in the instruction, such as the prefetch and evict-next instruction in the Alpha 21264 We believe that, in most architectures, the increasing speed gap between memory and processor will justify the inclusion of additional bits in the instruction code to facilitate the reduction of this gap.
 
-The benefits of such interface are twofold: It allows to work on block granularity classification that is proven to be important for the detection rate and it allows to transfer semantic information dependent on the code and independent on the execution context. The information is always accurate and 
+The benefits of such interface are twofold: It allows to work on block granularity classification that is proven to be important for the detection rate~\cite{Davari:2015} and it allows to transfer semantic information dependent on the code and independent on the execution context. The information is always accurate and we think this is a key point here compared to prior work which exploit static information. Hints let software override dynamic policies and control the cache, reaping the benefit of static information. However, hints are often inaccurate because of the dynamic behiavor and it is hard to predict from the hardware point-of-view if the prediction made by the compiler is correct. In this case, the information given is always correct.
 
 \section{Architecture exploration}
 
@@ -466,14 +504,6 @@ solution with a coherent RO cache.
     \caption{Network traffic variation for coherent and non coherent RO cache}
     \label{resultIncoherent}
 \end{figure}
-
-\section{Related Works}
-
-\textbf{Locality Optimization :} 
-
-\subsection{Coherence Optimization}
-
-\subsection{NVM Technologies}
 
 \section{Conclusion}
 
