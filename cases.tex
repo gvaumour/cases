@@ -114,9 +114,7 @@ Apart from the locality principle, the locality properties are far from being un
 
 A common useful tool employed by such approaches is the classification of data into private and shared\cite{Ros:2012,Cuesta:2013, Davari:2015} resulting in directory size reduction, or optimizing the coherence protocol itself by replacing explicit coherence invalidations with silent self-invalidation of shared data upon synchronization~\cite{Ros:2012}. The OS approach is the most common for such optimization because it does not impose extra requirements for dedicated hardware, since data classification at page granularity is stored along with the page table entries (PTEs)~\cite{Hardavellas:2009}. This makes it a good choice for complexity-effective optimizations.These solutions mostly detect read-only data at page granularity in a reactive fashion. A page is first considered read-only and a single write on the page switches the status of the page into read-write mode. Compared to a block granularity detection, Page granularity can produce poor detection rates and leads to under-optimal solutions. On the evaluated applications in \cite{Cuesta:2013}, the detection rate of read-only data goes from under 40\% to more than 60\% when switching from page to block granularity. Moreover, hardware-based proposition are area-constrained and limited to simple detection methods such as saturation counters. 
 
-Although incurring minimum hardware cost, compiler-driven classification is not transparent to software as it needs recompilation. It is well suited for hardware/software co-design, but requires significant effort to determine at compile time if a variable is going to be shared or not. The only work in that direction is from Kim et al.\cite{Kim:2010}. Proving that the sharing state of a data is hard at compile level, the analysis allows classication error in order to increase the proportion of detected shared data. However, it has to rely on hardware mechanisms to recover from those errors. Also, the classification is static so variable do not change states during execution. The RO/RW classification in such optimizations is seen as an extension on top of the private/shared classication. Also, they usually do not propose specific strutures to store the shared data that would allow to optimize for locality and cache ressource as well. An exception to this is the solution of Cebrian et al.\cite{cebrian:2017} proposes a dedicated shared L1 cache that is logically shared but physically distributed accross all cores. This solution does not scale very well as remotely accessing a cache line in the shared cache can be as painfull as a miss in the L2 cache. 
-
-With those solutions, we can see that different 
+Although incurring minimum hardware cost, compiler-driven classification is not transparent to software as it needs recompilation. It is well suited for hardware/software co-design, but requires significant effort to determine at compile time if a variable is going to be shared or not. The only work in that direction is from Kim et al.\cite{Kim:2010}. Proving the sharing state of a data is hard at compile level, so the analysis allows classication error in order to increase the proportion of detected shared data. However, it has to rely on hardware mechanisms to recover from those errors. Also, the classification is static so variable do not change states during execution. The RO/RW classification in such optimizations is seen as an extension on top of the private/shared classication. Also, they usually do not propose specific strutures to store the shared data that would allow to optimize for locality and cache ressource as well. An exception to this is the solution of Cebrian et al.\cite{cebrian:2017} proposes a dedicated shared L1 cache that is logically shared but physically distributed accross all cores. This solution does not scale very well as remotely accessing a cache line in the shared cache can be as painfull as a miss in the L2 cache. 
 
 As seen in the previous solutions, an efficient classification scheme is a key point for a  at compile-level of the read-only data as it is easier to 
 
@@ -219,7 +217,7 @@ The benefits of such interface are twofold: It allows to work on block granulari
 \section{Architecture exploration}
 
 This section describes the architectural exploration of read-only data
-specific management. A specific cache is added along a classic
+specific management. A dedicated cache is added along a classic
 cache-based memory system to handle specifically the read-only memory
 accesses. The exploration focuses on two aspects: the level of memory
 where it is pertinent to add the read-only cache (RO cache) and the
@@ -228,15 +226,7 @@ hierarchy of two levels with private first level caches and shared
 unified last-level cache (LLC), it creates two architectural
 possibilities presented Figure~\ref{architecture} which describes
 three scenarios. Since the read-only property of the data is dynamic,
-data can be accessed by both data paths depending on the time of the
-execution. Switching technique between data paths must then be
-considered in order to avoid coherence issue between the read-only
-(RO) cache and the RW cache of the same level. The resolution of this
-problem can incur overheads if a cache line has to do many switches
-between  RO and  classic data paths because we do not consider
-direct transfer between caches of the same level in this work. 
-
-To limit this overhead overlow, the 
+data can be accessed by both data paths depending on the time of the execution. Switching technique between data paths must then be considered in order to avoid coherence issue between the read-only (RO) cache and the RW cache of the same level. The resolution of this problem can incur overheads if a cache line has to do many switches between  RO and  classic data paths because we do not consider direct transfer between caches of the same level in this work. To limit this overhead, 
 
 %%%%%%%%
 %Early studies tries to place the specific management Placing the specific management at L2 level brings few energy reduction and no performance gain. Generally, less reuse occurs at L2-level than at L1-level. Dividing the memory stream at L2 level breaks this reuse and creates a prohibitive increase of the number of accesses to the main memory: +46\% for 128kB L2RO case and +70\% for 64kB L2RO case in average. The system spends time and energy due to an inefficient way to switch cache lines between the two L2 caches that has to transit through main memory. One may propose a better mechanism or a cache partitioning technique in this case, such as proposed by Khan and al.\cite{Khan:2014} to improve this solution. 
@@ -272,19 +262,13 @@ implement our architecture proposition, with the sub-simulator Ruby to
 describe the memory system and the coherence protocol. It allows
 detailed simulation of the cache hierarchy. The energy consumption of
 caches and interconnection network are obtained from the McPat
-framework v1.3~\cite{Li:2009}. The overall workflow is
-represented in Fig.~\ref{workflow}. The baseline system
-configuration is shown in Table~\ref{designs}. For each scenario, two
-sizes for the read-only cache are considered. 
-
+framework v1.3~\cite{Li:2009}. The overall workflow is represented in Fig.~\ref{workflow} with the simulation parameters presented Table~\ref{designs}. 
 
 For scenario A, the data cache of the reference scenario is splitted into a RW and a RO cache. Note that the area taken by cache controllers are not
 considered, meaning that the comparison is storage-constant and not
 strictly area-constant.
 
 For scenario B, we evaluate two size 16kB and 32kB for the RO cache. The RW caches are left at 32kB which means that the scenario B takes a bit more storage 
-
-All those results are 
 
 Table~\ref{sizesCaches}
 describes the balancing of the storage between the L2 and the
@@ -293,28 +277,31 @@ read-only cache.
 \begin{table}
 \centering
 %\normalsize
-\caption{Constant system parameters during simulations}
+\caption{Simulation parameters of the different scenarios}
 \label{designs}
-\begin{tabular}{ | c | c | c | c | c |}
+\begin{tabular}{ | c | c | c |}
 \hline
 \hline
- & L1D-32kB &  L1D-64kB & Scenario A & Scenario B \\
+ & L1 Data Cache& RO Cache\\
 \hline
-CPU & \multicolumn{4}{|c|}{4 cores in-order, 1GHz, 1 load/store unit}\\
+CPU & \multicolumn{2}{|c|}{4 cores in-order, 1GHz, 1 load/store unit}\\
 \hline
-L1-D cache & 32KB 2-ways& 64kB 2-ways&32KB 2-ways&32KB 2-ways\\
+Ref. Scenario & 32kB/64kB 2-ways & - \\
 \hline
-RO cache & - & - & 16kB 2 ways& 32KB 2 ways\\
+Scenario A & 32kB 2-ways & 16kB 2 ways\\
 \hline
-L2 & \multicolumn{4}{|c|}{256kB 16 ways assoc.}\\
+Scenario B & 32kB 2-ways  & 32KB 2-ways\\
 \hline
-Local Network& \multicolumn{4}{|c|}{Crossbar , 64B wide, 2 cycles lat.}\\
+L2 & \multicolumn{2}{|c|}{256kB 16 ways assoc.}\\
 \hline
-DRAM  & \multicolumn{4}{|c|}{512MB, 1 memory channel at 12.8GB/s}\\
+Local Network& \multicolumn{2}{|c|}{Crossbar , 64B wide, 2 cycles lat.}\\
+\hline
+DRAM  & \multicolumn{2}{|c|}{512MB, 1 memory channel at 12.8GB/s}\\
 \hline
 \hline
 \end{tabular}
 \end{table}
+
 
 
 \section{Results}
@@ -364,8 +351,6 @@ The Fig.\ref{benchsCarac} shows the memory accesses distribution for the benchma
     \label{benchsCarac}
 \end{figure}
 
-
-
 The main focus is the energy reduction of the system while keeping performance. The performance of the system is measured through the AMAT metric (Average Memory Access Time) because all other parameters (branch predictions, computation, ...) are constant between simulations. The energy consumption, the AMAT and the misses at L1-level are shown in Figure~\ref{results} for the different scenarios. Note that the RO cache misses are counted as L1-level misses for scenarios A and B.
 
 
@@ -376,49 +361,35 @@ The main focus is the energy reduction of the system while keeping performance. 
     \label{resultsConso}
 \end{figure}
 
-\begin{figure}
+\begin{figure*}
     \centering
-    \includegraphics[width=9cm]{./images/resultsMisses.png}
+    \includegraphics[width=15cm]{./images/resultsMisses.png}
     \caption{Normalized misses at L1-level variation}
     \label{resultsMisses}
-\end{figure}
+\end{figure*}
 
 
 \subsection{Scenario A}
 
-In scenario A, the number of cache misses stays relatively similar to the baseline even if the miss rate of L1D caches is decreased by an average of 17.56\%. As anticipated by the result of Section II, the locality of the main memory stream is improved when the read-only stream is removed. Note that this depollution of the L1-D caches is observed in the same proportion in scenario A and B. The number of misses does not change significantly because misses occuring previously on the L1D are now on the RO cache. Read-only accesses represent only 28.5\% of the total memory access in average, and they are divided equally between the 4 cores. In this case, private read-only caches handle very few memory accesses and yet are not able to resolve misses. This negates the performance improvements on L1D-caches and points out the poor use of the RO cache resources. The small energy improvement in this proposition is based on the fact that the read-only accesses are handled in a smaller cache than the baseline, the energy cost per access is lower.
+In scenario A, the number of cache misses stays relatively similar to the baseline even if the misses of L1D caches is decreased by an average of 24,2\%. As anticipated by the result of Section II, the locality of the main memory stream is improved when the read-only stream is removed. Note that this depollution of the L1-D caches is observed in the same proportion in scenario A and B. The number of misses does not change significantly because misses occuring previously on the L1D are now on the RO cache. Read-only accesses represent only 28.5\% of the total memory access in average, and they are divided equally between the 4 cores. In this case, private read-only caches handle very few memory accesses and yet are not able to resolve misses. This negates the performance improvements on L1D-caches and points out the poor use of the RO cache resources. The small energy improvement in this proposition is based on the fact that the read-only accesses are handled in a smaller cache than the baseline, the energy cost per access is lower.
 % In this case, one can think of a different cache policy than LRU to handle the RO cache that consider a stream with few reuse
 
 \subsection{Scenario B}
 
 Scenario B presents a great cache miss reduction for a 32kB read-only
-cache and the best energy improvement of 20.6\% in average. With a RO
-cache of 16kB, the miss reduction is not as important but, due to a
-cheaper cost per access, this miss reduction that occurred for a 32kB
-RO cache is converted into energy savings because of a more aggressive
-cache design.
-%which leads to important energy improvements. 
-Generally a shared cache implies a better use of resources but
-can provoke destructive interferences in the cache or performance
-degradation because of the resource contention. Since read-only
+cache and the best energy improvement of 16,8\% in average. Generally a shared cache implies a better use of resources but can provoke destructive interferences in the cache or performance degradation because of the resource contention. Since read-only
 accesses represent only 28.5\% of the total memory accesses and the
 great improvement in term of cache efficiency, the negative effects on
 performance stay marginal. The miss penalty observed for \textit{rotate},
 \textit{max33} and \textit{median33} can be explained by the fact that
 the baseline of these benchmarks is already very efficient, the miss
-rate at L1-level stays under 1\%. The additional cost caused by the miss increase is largely compensated by smaller cost per access for the read-only cache in these cases. 
-
-
-\textit{adi} and \textit{mat\_multiply} show an
+rate at L1-level stays under 1\%. The additional cost caused by the miss increase is largely compensated by smaller cost per access for the read-only cache in these cases. \textit{adi} and \textit{mat\_multiply} show an
 important miss reduction at L1-level even for a 16kB RO cache, because
 most of their read-only working set are shared. In these cases,
 processors are able to share the same cache block directly at L1-level
 into the RO cache. Such phenomena decreases the reuse distance of this
 block. The solution greatly benefits from this
-application characteristic. Scenario B with a RO cache of 16kB is
-the best for energy improvement and further analysis on this scenario
-is performed in the following sections.
-
+application characteristic. 
 
 
 \subsection{Interference analysis}
@@ -433,17 +404,13 @@ Interferences can be destructive if the fact of sharing the cache between severa
 \end{figure}
 
 If we correlate these results with the Fig.\ref{stackdistance}, it allows to understand why \textit{wodcam} is performing so well in our simulations. In Fig.\ref{stackdistance}, the reuse distances of the accessed performed in the read-only datapath are in average 6.3 times bigger than in the RW datapath. Most of the misses come from the read-only data path in this case, and by sharing the RO cache accross all cores, the Fig.\ref{interference} points at the important constructive interferences that occur in the RO datapath improving the RO data locality. This locality improvement is translated into an important L1-level misses reduction for \textit{wodcam}. This effect can also be observed for \textit{adi} and \textit{mat\_multiply} in a less significant manner. Note that locality improvement that not always translated into miss reduction such as in \textit{jacobi} as reuse distances need to be reduced enough to fit into the RO cache. 
-Constructive interference is a fine-grain phenomena hard to achieve as it depends on the execution speed of the threads but can improve in a significant manner the locality. 
+Constructive interference is a fine-grain phenomena hard to achieve as it depends on the execution speed of the threads but can improve in a significant manner the locality. Scenario B is the best for energy improvement and further analysis on this scenario is performed in the following sections.
+
 
 
 \subsection{Impact of the RO cache latency}
 
-Concerns can be made about the performance results presented
-previously for Scenario B.
-
- During the experimentations, the RO cache
-is configured to have the same latency as a classical L1-D cache
-because they are logically on the same level. In a real system, the RO cache latency would be expected to be longer as the RO cache is shared across cores. Moreover, one would think that the latency of the RO cache is more critical because it can potentially stall all processors. Some additional experiments have been made in order to study the impact of the latency of the RO cache on the overall system performance. This latency have been varied from 3 cycles to 15 cycles. As a reminder, the latency of an L1D-cache is 3 cycles, for L2 cache, 15 cycles. For a latency of 5 cycles, the AMAT degradation is null compared to the baseline architecture. The 5\% degradation barrier is crossed with a RO latency of 9 cycles. Even though the variation is linear, the sensibility is not the same for every application. It allows us to see the sensibility to the RO datapath which can be explained mostly by the numbers of requests handled. For example, \textit{max33} is more sensitive than \textit{rotate} to this parameter because the proportion of total CPU fetches handled through the RO cache is respectively 68\% and 11\%. These results show that performance degradation is observed only with really pessimistic simulations.
+During the previous simulations, the RO cache is configured to have the same latency as a classical L1-D cache because they are logically on the same level. In a real system, the RO cache latency would be expected to be longer as the RO cache is shared across cores. Moreover, one would think that the latency of the RO cache is more critical because it can potentially stall all processors. Some additional experiments have been made in order to study the impact of the latency of the RO cache on the overall system performance. This latency have been varied from 3 cycles to 15 cycles. As a reminder, the latency of an L1D-cache is 3 cycles, for L2 cache, 15 cycles. For a latency of 5 cycles, the AMAT degradation is null compared to the baseline architecture. The 5\% degradation barrier is crossed with a RO latency of 9 cycles. Even though the variation is linear, the sensibility is not the same for every application. It allows us to see the sensibility to the RO datapath which can be explained mostly by the numbers of requests handled. For example, \textit{max33} is more sensitive than \textit{rotate} to this parameter because the proportion of total CPU fetches handled through the RO cache is respectively 68\% and 11\%. These results show that performance degradation is observed only with really pessimistic simulations.
 
 \begin{figure}
     \centering
