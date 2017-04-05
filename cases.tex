@@ -323,7 +323,7 @@ The main focus is the energy reduction of the system while keeping performance. 
 
 \begin{figure*}
     \centering
-    \includegraphics[width=15cm]{./images/resultsMisses.png}
+    \includegraphics[width=15cm]{./images/resultsMisses1.png}
     \caption{Normalized misses at L1-level}
     \label{resultsMisses}
 \end{figure*}
@@ -337,8 +337,7 @@ Note that this depollution L1-D caches is observed in the same proportion in sce
 \subsection{Scenario B}
 
 
-Scenario B presents a great cache miss reduction and the best energy improvement of 16,8\% in average with a AMAT relatively constant compared to the baseline with 32kB L1D caches. 
-Reducing misses at L1-level has a great impact on the overall memory system as the higher memories are less accessed and can 
+Scenario B presents a great cache miss reduction and the best energy improvement of 16,8\% in average with a AMAT relatively constant compared to the baseline with 32kB L1D caches. Reducing misses at L1-level has a great impact on the overall memory system as it reduces also accesses to L2 cache and main memory. 
 
 Generally speaking, sharing a cache can provoke interferences and resource conflicts. Performance degradation du to ressource conflicts here stays marginal because the RO cache handles only 28.5\% of the accesses and because the solution brings a great reduction of L1-level misses which compensates this performance degradation. Compared to the baseline with 64kB L1D caches, scenario B does not achieved a miss reduction as important but is much more energy efficient either for dynamic energy because they have a much smaller cost per access or for the leakage power because the cache used are smaller. Compared to scenario A, the depollution effect observed on the L1D caches is relatively similar. However, the difference is that some applications such as \textit{adi} and \textit{mat\_multiply} show an important miss reduction on the RO datapath because most of their read-only working set are shared. In these cases, cores are able to share the same cache block directly into the RO cache and it decreases the reuse distance of this block. Those constructive interferences are further studied with the help of the reuse distance in the next paragraph.  For other applications such as \textit{rotate}, \textit{max33} and \textit{median33} the baseline of these benchmarks is already very efficient, the miss rate is under 1\%, and it is hard for the RO cache to further increase the energy efficiency in such situation. However, the cache ressource is not wasted as in scenario A where 4 RO caches are used compared to only one in scenario B. We can see the miss rate at L1-level stays under 1\%.
 
@@ -410,6 +409,7 @@ coherence state of the cache block in the L1D and L2 caches. It means
 that the L1D cache still has read/write permission to the cache block
 after a read access from the RO cache, and potentially a future write
 request will not miss.
+
 
 The state machine of a non coherent RO cache has been implemented into Gem5 and compared to the result with the coherent RO cache. As anticipated with the examples of Figure~\ref{resultIncoherent}, a non
 coherent RO cache mainly reduces the network traffic of 26\% compared
