@@ -77,13 +77,14 @@ Traditional existing cache-based memory hierarchies, especially in the context o
 
 \section{Introduction}
 
-Caches are widely used in modern processors to effectively hide the data access latency since memory reference patterns in most applications have good spatial and temporal locality. But with the number of cores increasing, adopting hardware-controlled caches increases the energy consumption for two reasons. The automatic data management in caches is costly and the coherence protocols do not scale very well with the number of cores. As reported in the literature, the cache hierarchy consumes between 25\% and 50\% of the energy of the chip~\cite{Segars:2001} on current systems. With the growing focus on energy efficiency, it is important to find ways to reduce energy without sacrificing performance
+Caches are widely used in modern processors to effectively hide the data access latency since memory reference patterns in most applications have good spatial and temporal locality. But with the number of cores increasing, adopting hardware-controlled caches increases the energy consumption for two reasons. The automatic data management in caches is costly and the coherence protocols do not scale very well with the number of cores. As reported in the literature, the cache hierarchy consumes between 25\% and 50\% of the energy of the chip~\cite{Segars:2001} on current systems. With the growing focus on energy efficiency, it is important to find ways to reduce energy without sacrificing performance. Usually the memory stream is handled in an uniform way by the memory system that has few knowledge about the data currently being used. Heterogeneous management is a good opportunity to exploit potentials that exist in sub-part of the working set, such techniques is mainly used for two reasons.
 
-Usually the memory stream is handled in an uniform way by the memory system that has few knowledge about the data currently being used. Heterogeneous management is a good opportunity to exploit potentials that exist in sub-part of the working set, such techniques is mainly used for two reasons.
 
 First, a group of solutions tries to classify data based on their locality properties. Different types of data between instruction, head data, stack data, and global data have different locality properties and cache uses so that specific cache structure can be build for each type. This type of solution has been studied with success since the early days of cache memories. In the 60s, Harvard architectures separate the L1-level cache into instruction cache and data cache. Since the 90s, lots of solutions have been proposed\cite{Gonzalez:1995,Kang:2011,Lee:2000,Geiger:2005} to go further in this direction with dedicated cache memories for a specific type of data (stack cache, heap cache, ...) They bring important dynamic energy consumption reduction if the separation of data results in two sub-groups of data with very different locality properties. The difficulty of such proposition is to perform the data classification and drive the request to the relevant sub-memory. 
 
+
 Heterogeneous management has also been proposed for coherence cost reduction. Indeed, classification of data into private and shared has proven to be an efficient solution in this case since private data can be taken out of coherence and resources can be concentrated on providing coherence solely for shared data. This is based on the observation that few memory blocks actually require coherence, only 18\% of the OS pages are in Shared Read-Write state on PARSEC on average\cite{Cuesta:2013}. It allows to simplify coherence in multicore architectures by reducing its associated costs (area, energy, performance) and therefore increasing scalability. Most of the classification work is done in a reactive fashion during the execution at an OS-page granularity. 
+
 
 We propose in this paper an approach orthogonal to both groups of solution with the specific management of read-only data. In this paper, read-only is studied as a dynamic property over time, so the data status can change during execution. Although the coherence benefit of a specific read-only data management is natural, the locality difference has been illustrated in a previous study~\cite{vaumourin:2014} performed on a standard set of applications for embedded systems. It reveals a locality potential of a heterogeneous management of read-only data, especially for image processing applications due to their implementation as a pipeline of tasks. Also, we proposed a data classification scheme between RO and RW data at compile-time which has the main advantages of adding zero performance overhead and no additional hardware predictors. 
 
@@ -96,14 +97,12 @@ The organization of this paper is the following: Section II discusses the relate
 \section{Related Works}
 
 As mentioned before, the specific management in the memory system based on based on data classification has been successfully studied in the past. These solutions creates two (or more) sub-groups of data with different properties that can be exploit separately. The problems encoutered with such solutions are the efficiency of the classification scheme . We focus on heterogenous data management solutions that optimize for locality and coherence. 
-\\
 
-\textbf{Locality Optimization:} 
+\subsection{Locality Optimization:} 
 
 Apart from the locality principle, the locality properties are far from being uniform accros the working set and differences can be exploited. This difference is often intuitive like the difference between data and instructions. Instructions represent a very small part working set while being accessed much more often than regular data, which is one of the justification of a separation at the first level between instruction and data cache. Going further in this direction, Gonzales et al.\cite{Gonzalez:1995} first proposed a L1 data cache with separate sub-structures one for data with high temporal locality (temporal cache) and one for high spatial locality data (spatial cache) that has been improved by Adamo et al.\cite{Adamo:2009}. In this case, the classification focuses on detecting wheter the accessed data is part of an array to place them in the spatial cache. In order to achieve that, the solution includes a history table that detects strided accesses that are . Having separated structures allows to optimize further the cache design and in this case, the temporal and spatial sub-caches have different blocksizes and replacement policies. Lee et al.\cite{Lee:2000} propose to divide the data cache into separate structures for stack, heap, and global data. Geiger goes further by splitting the heap cache into 2 sub-parts~\cite{Geiger:2005}. Those solutions rely on being able to distinguish data types based solely on the address, possibly with some system support. Without operating system and hardware support, these approaches will not work when Address Space Layout Randomization (ASLR) is used for security, because these techniques involve randomly relocating the program’s stack, heap, and shared libraries at runtime. Kang et al.\cite{Kang:2011} proposed a stack cache taht is able to detect stack data accesses by determining whether the address is an offset from the stack pointer register. Those solutions are often more effective at reducing the miss rate compared to a naive cache size augmentation while being more energy efficient. The main drawbacks of such technique are the classification mechanism that stays quite simple and at hardware-level. Also, none of those solutions makes distinctions based on read/write access patterns of data. As the locality difference between RW and RO data is not obvious, it already been studied been illustrated in a previous study \cite{vaumourin:2014} and an extension of this analysis is presented farther in this paper, which justify the specific read-only data management for locality purpose. 
-\\
 
-\textbf{Coherence Optimization:}
+\subsection{Coherence Optimization:}
 
 A common useful tool employed by such approaches is the classification of data into private and shared\cite{Ros:2012,Cuesta:2013, Davari:2015} resulting in directory size reduction, or optimizing the coherence protocol itself by replacing explicit coherence invalidations with silent self-invalidation of shared data upon synchronization~\cite{Ros:2012}. The OS approach is the most common for such optimization because it does not impose extra requirements for dedicated hardware, since data classification at page granularity is stored along with the page table entries (PTEs)~\cite{Hardavellas:2009}. This makes it a good choice for complexity-effective optimizations.These solutions mostly detect read-only data at page granularity in a reactive fashion. A page is first considered read-only and a single write on the page switches the status of the page into read-write mode. Compared to a block granularity detection, Page granularity can produce poor detection rates and leads to under-optimal solutions. On the evaluated applications in \cite{Cuesta:2013}, the detection rate of read-only data goes from under 40\% to more than 60\% when switching from page to block granularity. Moreover, hardware-based proposition are area-constrained and limited to simple detection methods such as saturation counters. 
 
@@ -118,7 +117,7 @@ We define read-only data as data used in a read mode either for the whole applic
 
 \begin{figure}
     \centering
-    \includegraphics[width=8cm]{./images/localityworkflow.png}
+    \includegraphics[width=9cm]{./images/localityworkflow.png}
      \caption{Workflow of the locality Analysis}
     \label{localityworkflow}
 \end{figure}
@@ -127,7 +126,7 @@ We study the separation of the memory stream with a data locality metric: the re
 
 \begin{figure}
     \centering
-    \includegraphics[width=8cm]{./images/stackdistance.png}
+    \includegraphics[width=9cm]{./images/stackdistance.png}
      \caption{Variation of the average reuse distance}
     \label{stackdistance}
 \end{figure}
@@ -341,9 +340,7 @@ Note that this depollution L1-D caches is observed in the same proportion in sce
 Scenario B presents a great cache miss reduction and the best energy improvement of 16,8\% in average with a AMAT relatively constant compared to the baseline with 32kB L1D caches. 
 Reducing misses at L1-level has a great impact on the overall memory system as the higher memories are less accessed and can 
 
-Generally speaking, sharing a cache can provoke interferences and resource conflicts. Performance degradation du to ressource conflicts here stays marginal because the RO cache handles only 28.5\% of the accesses and because the solution brings a great reduction of L1-level misses which compensates this performance degradation.
-
-Compared to the baseline with 64kB L1D caches, scenario B does not achieved a miss reduction as important but is much more energy efficient either for dynamic energy because they have a much smaller cost per access or for the leakage power because the cache used are smaller. Compared to scenario A, the depollution effect observed on the L1D caches is relatively similar. However, the difference is that some applications such as \textit{adi} and \textit{mat\_multiply} show an important miss reduction on the RO datapath because most of their read-only working set are shared. In these cases, cores are able to share the same cache block directly into the RO cache and it decreases the reuse distance of this block. Those constructive interferences are further studied with the help of the reuse distance in the next paragraph.  For other applications such as \textit{rotate}, \textit{max33} and \textit{median33} the baseline of these benchmarks is already very efficient, the miss rate is under 1\%, and it is hard for the RO cache to further increase the energy efficiency in such situation. However, the cache ressource is not wasted as in scenario A where 4 RO caches are used compared to only one in scenario B. We can see the miss rate at L1-level stays under 1\%.
+Generally speaking, sharing a cache can provoke interferences and resource conflicts. Performance degradation du to ressource conflicts here stays marginal because the RO cache handles only 28.5\% of the accesses and because the solution brings a great reduction of L1-level misses which compensates this performance degradation. Compared to the baseline with 64kB L1D caches, scenario B does not achieved a miss reduction as important but is much more energy efficient either for dynamic energy because they have a much smaller cost per access or for the leakage power because the cache used are smaller. Compared to scenario A, the depollution effect observed on the L1D caches is relatively similar. However, the difference is that some applications such as \textit{adi} and \textit{mat\_multiply} show an important miss reduction on the RO datapath because most of their read-only working set are shared. In these cases, cores are able to share the same cache block directly into the RO cache and it decreases the reuse distance of this block. Those constructive interferences are further studied with the help of the reuse distance in the next paragraph.  For other applications such as \textit{rotate}, \textit{max33} and \textit{median33} the baseline of these benchmarks is already very efficient, the miss rate is under 1\%, and it is hard for the RO cache to further increase the energy efficiency in such situation. However, the cache ressource is not wasted as in scenario A where 4 RO caches are used compared to only one in scenario B. We can see the miss rate at L1-level stays under 1\%.
 
 
 \subsection{Interference analysis}
@@ -387,7 +384,9 @@ We study the results of Scenario B regarding the strong scalability of the memor
 \section{Specific RO Cache optimization}
 
 Adding more caches to the memory system increases the design complexity but also opens degrees of freedom for specific optimizations. This section explores one possible specific optimization for the RO cache based on the observation that it issues only read requests. This property is guaranteed by the conservative static analysis. No tracking is then needed from the coherence protocol in the same way as instruction cache. Such optimization is related to an important number of work from the literature proposing to reduce the impact of coherence by limiting expensive coherence mechanisms to shared read-write cache blocks. Several recent propositions~\cite{Cuesta:2013}\cite{Ros:2012}\cite{Davari:2015} classify data as private or read-only in order to reduce the coherence overhead and reduce directory design, this classification is done mostly at OS or hardware level. Such propositions are shown to improve the scalability of the architecture and reduce the energy consumption. Such solutions initialize all data status as private. When shared write accesses occurs, the status of the data (a whole page or a cache block depending on the solution) switches to shared and costly coherence recovery mechanisms are used to recover from this classification error. Moreover, such solutions usually do not consider transition back to the private status. Compared to such solutions, our proposition allows the status transitions of the cache block and does not need additional harware mechanism to protect against classification error as the compiler garantees the correctness of the classification. Our proposition of a shared read-only cache at the first level of hierarchy contributes as an orthogonal approach to such optimization that can include read-write data that present read-only periods into this optimization, increasing the scope of such optimization.\\
-\indent The coherence state machine of the RO and L2 cache controller have
+
+
+The coherence state machine of the RO and L2 cache controller have
 been modified in order to avoid the tracking of the read-only cache
 blocks. The state machine of the read-only cache is very similar to an
 L1D cache in a unicore system. Figure~\ref{incoherent} illustrates two
@@ -410,8 +409,9 @@ transaction requires less messages and no modification of the
 coherence state of the cache block in the L1D and L2 caches. It means
 that the L1D cache still has read/write permission to the cache block
 after a read access from the RO cache, and potentially a future write
-request will not miss. \\
-\indent The state machine of a non coherent RO cache has been implemented into Gem5 and compared to the result with the coherent RO cache. As anticipated with the examples of Figure~\ref{resultIncoherent}, a non
+request will not miss.
+
+The state machine of a non coherent RO cache has been implemented into Gem5 and compared to the result with the coherent RO cache. As anticipated with the examples of Figure~\ref{resultIncoherent}, a non
 coherent RO cache mainly reduces the network traffic of 26\% compared
 to coherent RO cache, decreasing the energy consumption by 4\% in average compared to the results of the previous section. It can also
 prevent the prohibitive increase of messages that occur for example on
@@ -441,12 +441,6 @@ solution with a coherent RO cache.
     \label{resultIncoherent}
 \end{figure}
 
-\section{Non-Volatile Memory Technologies}
-
-While being relevant for locality and coherence optimization, studying read-only data in the memory system has also an interest in the context of the developpement of new non-volatile memory technologies. In this context, NVM technologies presents a huge interest because they allows to implement bigger last-level caches with a much smaller area budget while reducing its leakage power by an order of magnitude. Those technologies present the counterpart of an important cost of writing for energy and latency and a very small endurance (4 order of magnitude less than SRAM). Solutions usually consider Hybrid Cache Architecture (HCA), a LLC with some ways implemented as SRAM , and some ways implemented as a particular NVM in order to have the best of all technologies. To exploit efficiently such cache, it requires an predictor that allocates in the SRAM part cache lines that are written a lot in order to keep the writing penalty overhead low. 
-
-With our proposition, the RO cache is garanteed to handle read requests so considering an hybrid cache for our case is not suitable. There is no different data behavior 
-We ran some experiences about 
 
 \section{Conclusion}
 
